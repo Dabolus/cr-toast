@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+  <title>cr-toast demo</title>
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../cr-button/cr-button.html">
+  <link rel="import" href="../../cr-fonts/cr-fonts.html">
+  <link rel="import" href="../cr-toast.html">
+
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+<div class="vertical-section-container centered">
+  <h3>Basic demo</h3>
+  <demo-snippet>
+    <template>
+      <cr-button onclick="toast.open()">Open</cr-button>
+      <cr-toast id="toast" text="This toast auto-closes after 3 seconds"></cr-toast>
+    </template>
+  </demo-snippet>
+</div>
+</body>
+</html>

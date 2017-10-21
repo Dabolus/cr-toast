@@ -1,0 +1,274 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../iron-overlay-behavior/iron-overlay-behavior.html">
+
+<dom-module id="cr-toast">
+  <template>
+    <style>
+      :host {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: #e0f5ff;
+        color: #666;
+        min-height: 48px;
+        margin: 0;
+        padding: 16px 24px;
+        box-sizing: border-box;
+        font-size: 14px;
+        cursor: default;
+        box-shadow: 0 16px 96px 0 rgba(0, 0, 0, 0.025);
+        width: 100%;
+        text-align: center;
+        transform: translateY(-300px);
+        @apply --sc-ccbackbeat;
+      }
+
+      :host(.cr-toast-open) {
+        transform: translateY(0);
+        animation: cr-toast-bounce .25s 1;
+      }
+
+      :host(.cr-toast-close) {
+        transform: translateY(-300px);
+        animation: cr-toast-bounce-reverse .25s 1;
+      }
+
+      @keyframes cr-toast-bounce {
+        0% {
+          transform: translateY(-300px) scaleY(1.25);
+        }
+        70% {
+          transform: translateY(3px) scaleY(1.25);
+        }
+        100% {
+          transform: translateY(0) scaleY(1);
+        }
+      }
+      /* We use a different animation because some browsers do not support reverse animations */
+      @keyframes cr-toast-bounce-reverse {
+        0% {
+          transform: translateY(0);
+        }
+        30% {
+          transform: translateY(3px) scaleY(1.25);
+        }
+        100% {
+          transform: translateY(-300px) scaleY(1);
+        }
+      }
+    </style>
+
+    <span>[[text]]</span>
+    <slot></slot>
+  </template>
+
+  <script>
+		// Keeps track of the toast currently opened.
+		let currentToast = null;
+
+		/**
+		 * `cr-toast`
+     *
+		 * A Clash Royale styled toast notification for Polymer 2.
+     *
+     * Only one `cr-toast` at a time will be visible on screen.
+     *
+     * Use `opened` to show the toast:
+     *
+     * Example:
+     *
+     * ```html
+     * <cr-toast text="Hello world!" opened></cr-toast>
+     * ```
+     *
+     * Also `open()` or `show()` can be used to show the toast:
+     *
+     * Example:
+     *
+     * ```html
+     * <cr-button on-click="openToast">Open Toast</cr-button>
+     * <cr-toast id="toast" text="Hello world!"></cr-toast>
+     *
+     * ...
+     *
+     * openToast: function() {
+     *   this.$.toast.open();
+     * }
+     * ```
+     *
+     * Set `duration` to 0, a negative number or Infinity to persist the toast on screen:
+     *
+     * Example:
+     *
+     * ```html
+     * <cr-toast text="Terms and conditions" opened duration="0">
+     *   <a href="#">Show more</a>
+     * </cr-toast>
+     * ```
+     *
+     * This element applies the mixin `--sc-ccbackbeat` but does not import `cr-fonts/cr-fonts.html`.
+     * In order to apply the `SC CCBackBeat` font to this element, make sure you've imported `cr-fonts/cr-fonts.html`.
+		 *
+		 * @customElement
+		 * @polymer
+		 * @demo demo/index.html
+		 */
+		class CrToast extends Polymer.mixinBehaviors([Polymer.IronOverlayBehavior], Polymer.Element) {
+			static get is() {
+				return 'cr-toast';
+			}
+
+			static get properties() {
+				return {
+					/**
+					 * The duration in milliseconds to show the toast.
+					 * Set to `0`, a negative number, or `Infinity`, to disable the
+					 * toast auto-closing.
+					 */
+					duration: {
+						type: Number,
+						value: 3000
+					},
+					/**
+					 * The text to display in the toast.
+					 */
+					text: {
+						type: String,
+						value: ''
+					},
+					/**
+					 * Overridden from `IronOverlayBehavior`.
+					 * Set to false to enable closing of the toast by clicking outside it.
+					 */
+					noCancelOnOutsideClick: {
+						type: Boolean,
+						value: true
+					},
+					/**
+					 * Overridden from `IronOverlayBehavior`.
+					 * Set to true to disable auto-focusing the toast or child nodes with
+					 * the `autofocus` attribute` when the overlay is opened.
+					 */
+					noAutoFocus: {
+						type: Boolean,
+						value: true
+					},
+					_interestedResizables: {
+						type: Array,
+						value: () => {
+							return [];
+						}
+					}
+				};
+			}
+
+			static get listeners() {
+				return {
+					'transitionend': '__onTransitionEnd'
+				};
+			}
+
+			/**
+			 * Read-only. Can auto-close if duration is a positive finite number.
+			 * @property _canAutoClose
+			 */
+			get _canAutoClose() {
+				return this.duration > 0 && this.duration !== Infinity;
+			}
+
+			created() {
+				this._autoClose = null;
+			}
+
+			/**
+			 * Show the toast. Without arguments, this is the same as `open()` from `IronOverlayBehavior`.
+			 * @param {(Object|string)=} properties Properties to be set before opening the toast.
+			 * e.g. `toast.show('hello')` or `toast.show({text: 'hello', duration: 3000})`
+			 */
+			show(properties) {
+				if (typeof properties === 'string') {
+					properties = {text: properties};
+				}
+				for (let property in properties) {
+					if (properties.hasOwnProperty(property)) {
+						if (property.indexOf('_') === 0) {
+							Polymer.Base._warn('The property "' + property + '" is private and was not set.');
+						} else if (property in this) {
+							this[property] = properties[property];
+						} else {
+							Polymer.Base._warn('The property "' + property + '" is not valid.');
+						}
+					}
+				}
+				this.open();
+			}
+
+			/**
+			 * Hide the toast. Same as `close()` from `IronOverlayBehavior`.
+			 */
+			hide() {
+				this.close();
+			}
+
+			/**
+			 * Called on transitions of the toast, indicating a finished animation
+			 * @private
+			 */
+			__onTransitionEnd(e) {
+				// there are different transitions that are happening when opening and
+				// closing the toast. The last one so far is for `opacity`.
+				// This marks the end of the transition, so we check for this to determine if this
+				// is the correct event.
+				if (e && e.target === this && e.propertyName === 'transform') {
+					if (this.opened) {
+						this._finishRenderOpened();
+					} else {
+						this._finishRenderClosed();
+					}
+				}
+			}
+
+			/**
+			 * Overridden from `IronOverlayBehavior`.
+			 * Called when the value of `opened` changes.
+			 */
+			_openedChanged() {
+				if (this._autoClose !== null) {
+					this.cancelAsync(this._autoClose);
+					this._autoClose = null;
+				}
+				if (this.opened) {
+					if (currentToast && currentToast !== this) {
+						currentToast.close();
+					}
+					currentToast = this;
+					if (this._canAutoClose) {
+						this._autoClose = this.async(this.close, this.duration);
+					}
+				} else if (currentToast === this) {
+					currentToast = null;
+				}
+				Polymer.IronOverlayBehaviorImpl._openedChanged.apply(this, arguments);
+			}
+
+			/**
+			 * Overridden from `IronOverlayBehavior`.
+			 */
+			_renderOpened() {
+				this.classList.add('cr-toast-open');
+			}
+
+			/**
+			 * Overridden from `IronOverlayBehavior`.
+			 */
+			_renderClosed() {
+				this.classList.remove('cr-toast-open');
+				this.classList.add('cr-toast-close');
+				setTimeout(() => this.classList.remove('cr-toast-close'), 250);
+			}
+		}
+
+		window.customElements.define(CrToast.is, CrToast);
+  </script>
+</dom-module>
